@@ -1,3 +1,4 @@
+package nvlled.memgame;
 
 import javax.swing.*;
 import java.awt.*;
