@@ -103,6 +103,59 @@ class MouseHandler extends MouseAdapter {
     }
 }
 
+class FadeBlock implements MemBlock.Renderer, Runnable {
+    MemBlock block;
+    Emitter<GameEvent> events;
+    float alpha = 0.0f;
+    float fadeStep = 0.05f;
+
+    private FadeBlock(MemBlock block, Emitter<GameEvent> events) {
+        this.block = block;
+        this.events = events;
+    }
+
+    public static FadeBlock show(MemBlock block, Emitter<GameEvent> events) {
+        return new FadeBlock(block, events);
+    }
+
+    public static FadeBlock hide(MemBlock block, Emitter<GameEvent> events) {
+        FadeBlock fd = new FadeBlock(block, events);
+        fd.alpha = 1.0f;
+        fd.fadeStep *= -1f;
+        return fd;
+    }
+
+    @Override
+    public boolean isOverlay() { return false; }
+
+    @Override
+    public void paint(Graphics2D g) {
+        block.paintBackground(g);
+        if (alpha >= 0f && alpha <= 1f)
+            g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        block.paintBlock(g);
+    }
+
+    public void run() {
+        block.setRenderer(this);
+        int type = NextFrameEvent.TYPE;
+        Emitter.Iterator<GameEvent> frames = events.iterator(new TypePredicate<GameEvent>(type));
+
+        while (alpha >= 0f && alpha <= 1f) {
+            alpha += fadeStep;
+            frames.next();
+        }
+        frames.close();
+
+        if (alpha < 0.5f) {
+            block.hide();
+        } else {
+            block.show();
+        }
+        block.setRenderer(null);
+    }
+}
+
 class MainScript implements Script {
     MemGrid grid;
     Emitter<GameEvent> events;
@@ -126,20 +179,20 @@ class MainScript implements Script {
 
     public void run() throws InterruptedException {
         while(true) {
-            // TODO: add effects
             MemBlock block1 = nextBlock();
-            block1.show();
+            FadeBlock.show(block1, events).run();
 
             MemBlock block2 = block1;
             while (block1 == block2)
                 block2 = nextBlock();
-            block2.show();
+            FadeBlock.show(block2, events).run();
 
             Thread.sleep(1200);
 
             if (!block1.equals(block2)) {
-                block1.hide();
-                block2.hide();
+                // TODO: use executors
+                new Thread(FadeBlock.hide(block1, events)).start();
+                FadeBlock.hide(block2, events).run();
             }
         }
     }

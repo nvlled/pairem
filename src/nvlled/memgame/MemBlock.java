@@ -17,23 +17,26 @@ public abstract class MemBlock {
         return this == block;
     }
 
+    public void paintBackground(Graphics2D g) {
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, 100, 100);
+    }
+
     public void paint(Graphics2D g) {
-        if (renderer != null) {
+        Renderer r = renderer;
+        if (r != null) {
             if (renderer.isOverlay()) {
                 if (shown) {
                     paintBlock(g);
                 } else {
-                    g.setColor(Color.BLACK);
-                    g.fillRect(0, 0, 100, 100);
+                    paintBackground(g);
                 }
             }
-            renderer.paint(g);
+            r.paint(g);
         } else {
+            paintBackground(g);
             if (shown) {
                 paintBlock(g);
-            } else {
-                g.setColor(Color.BLACK);
-                g.fillRect(0, 0, 100, 100);
             }
         }
     }
