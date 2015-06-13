@@ -38,6 +38,17 @@ public class Main {
 
         Dimension winSize = frame.getSize();
         Image dbImage = frame.createImage((int) winSize.getWidth(), (int) winSize.getHeight());
+
+        NextFrameEvent nextFrame = new NextFrameEvent();
+
+        new Thread(new Runnable() {
+            public void run() {
+                events.emit(new BlockSelectEvent(grid.blocks[0]));
+                try { Thread.sleep(1000); } catch (Exception fuckyou) {}
+                events.emit(new BlockSelectEvent(grid.blocks[1]));
+            }
+        }).start();
+
         while (true) {
             events.dispatchEvents();
 
@@ -46,6 +57,7 @@ public class Main {
             g.drawImage(dbImage, 0, 0, null);
 
             Thread.sleep(33);
+            events.emit(nextFrame);
         }
     }
 }
@@ -63,6 +75,13 @@ class BlockSelectEvent extends GameEvent {
     int getType() { return TYPE; }
 
     MemBlock getBlock() { return block; }
+}
+
+class NextFrameEvent extends GameEvent {
+    public static final int TYPE = 512;
+
+    @Override
+    int getType() { return TYPE; }
 }
 
 class MouseHandler extends MouseAdapter {
@@ -123,5 +142,16 @@ class MainScript implements Script {
                 block2.hide();
             }
         }
+    }
+}
+
+class TypePredicate<T extends GameEvent> implements Predicate<T> {
+    private int type;
+
+    public TypePredicate(int type) { this.type = type; }
+
+    @Override
+    public boolean test(T e) {
+        return e.getType() == type;
     }
 }
