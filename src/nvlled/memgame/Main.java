@@ -36,11 +36,15 @@ public class Main {
             }
         }).start();
 
+        Dimension winSize = frame.getSize();
+        Image dbImage = frame.createImage((int) winSize.getWidth(), (int) winSize.getHeight());
         while (true) {
             events.dispatchEvents();
 
+            grid.paint((Graphics2D) dbImage.getGraphics());
             Graphics2D g = (Graphics2D) frame.getGraphics();
-            grid.paint(g);
+            g.drawImage(dbImage, 0, 0, null);
+
             Thread.sleep(33);
         }
     }
