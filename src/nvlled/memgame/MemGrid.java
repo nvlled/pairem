@@ -1,14 +1,17 @@
 package nvlled.memgame;
 
-import javax.swing.*;
 import java.awt.*;
 import java.util.*;
+import javax.swing.*;
 
 public class MemGrid {
     int rows;
     int columns;
+
     int blockSize = 100; // pixel unit
     int blockSpace = 20; // pixel unit
+    int offsetX;
+    int offsetY;
 
     MemBlock[] blocks;
 
@@ -43,22 +46,28 @@ public class MemGrid {
             int col = i % columns;
 
             int z = blockSize + blockSpace;
-            int x = row * z;
-            int y = col * z;
+            int x = offsetX + col * z;
+            int y = offsetY + row * z;
 
             Graphics2D g_ = (Graphics2D) g.create(x, y, blockSize, blockSize);
             blocks[i].paint(g_);
         }
     }
 
-    // ----##----##----
-    // |  |##|  |##|  |
-    // ----##----##----
-    // |  |##|  |##|  |
-    // ----##----##----
-    // |  |##|  |##|  |
-    // ----##----##----
+    public void setProps(BlockProps props) {
+        blockSize = props.blockSize;
+        blockSpace = props.blockSpace;
+        offsetX = props.offsetX;
+        offsetY = props.offsetY;
+    }
+
     public MemBlock getBlockAt(int x, int y) {
+        if (x < offsetX || y < offsetY)
+            return null;
+
+        x -= offsetX;
+        y -= offsetY;
+
         int z = blockSize+blockSpace;
         int row = y/z;
         int col = x/z;
@@ -68,10 +77,12 @@ public class MemGrid {
 
         if (x > right || y > bottom)
             return null;
+        if (x > z*(rows-1) || y > z*(columns+1))
+            return null;
         if (col > columns)
             return null;
 
-        int i = col*columns + row;
+        int i = row*columns + col;
         if (i < blocks.length)
             return blocks[i];
         return null;

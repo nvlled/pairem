@@ -18,8 +18,9 @@ public abstract class MemBlock {
     }
 
     public void paintBackground(Graphics2D g) {
+        Rectangle rect = g.getClipBounds();
         g.setColor(Color.BLACK);
-        g.fillRect(0, 0, 100, 100);
+        g.fillRect(0, 0, (int) rect.getWidth(), (int) rect.getHeight());
     }
 
     public void paint(Graphics2D g) {
@@ -82,6 +83,7 @@ class ImageMemBlock extends MemBlock {
     @Override
     public void paintBlock(Graphics2D g) {
         // TODO: adjust image size to current graphics size
-        g.drawImage(image, 0, 0, null);
+        Rectangle rect = g.getClipBounds();
+        g.drawImage(image, 0, 0, (int) rect.getWidth(), (int) rect.getHeight(), null);
     }
 }

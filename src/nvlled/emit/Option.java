@@ -1,6 +1,6 @@
 package nvlled.emit;
 
-class Option<T> {
+public class Option<T> {
     T item;
 
     public Option() {  }

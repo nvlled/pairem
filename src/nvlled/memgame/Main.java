@@ -17,9 +17,13 @@ public class Main {
             ImageMemBlock.loadFile("images/ex.png")
         );
 
-        JFrame frame = new JFrame();
-        frame.setSize(700, 500);
-        frame.setVisible(true);
+        final JFrame frame = new JFrame();
+        SwingUtilities.invokeAndWait(new Runnable() {
+            public void run() {
+                frame.setSize(500, 700);
+                frame.setVisible(true);
+            }
+        });
 
         final Emitter<GameEvent> events = new Emitter<GameEvent>();
 
@@ -37,28 +41,49 @@ public class Main {
         }).start();
 
         Dimension winSize = frame.getSize();
-        Image dbImage = frame.createImage((int) winSize.getWidth(), (int) winSize.getHeight());
+        final Option<Image> dbImage = new Option<>(frame.createImage(
+                    (int) winSize.getWidth(),
+                    (int) winSize.getHeight()));
+
+
+        frame.addComponentListener(new ComponentAdapter() {
+            public void componentResized(ComponentEvent e) {
+                Dimension winSize = frame.getSize();
+                grid.setProps(BlockProps.compute(
+                        grid.rows,
+                        grid.columns,
+                        (int) winSize.getWidth(),
+                        (int) winSize.getHeight()
+                ));
+                dbImage.set(frame.createImage(
+                        (int) winSize.getWidth(),
+                        (int) winSize.getHeight()));
+            }
+        });
+
 
         NextFrameEvent nextFrame = new NextFrameEvent();
-
-        new Thread(new Runnable() {
-            public void run() {
-                events.emit(new BlockSelectEvent(grid.blocks[0]));
-                try { Thread.sleep(1000); } catch (Exception fuckyou) {}
-                events.emit(new BlockSelectEvent(grid.blocks[1]));
-            }
-        }).start();
 
         while (true) {
             events.dispatchEvents();
 
-            grid.paint((Graphics2D) dbImage.getGraphics());
+            Graphics2D dbg = (Graphics2D) dbImage.get().getGraphics();
             Graphics2D g = (Graphics2D) frame.getGraphics();
-            g.drawImage(dbImage, 0, 0, null);
+
+            winSize = frame.getSize();
+            clearGraphics(dbg, (int) winSize.getWidth(), (int) winSize.getHeight());
+
+            grid.paint(dbg);
+            g.drawImage(dbImage.get(), 0, 0, null);
 
             Thread.sleep(33);
             events.emit(nextFrame);
         }
+    }
+
+    public static void clearGraphics(Graphics g, int w, int h) {
+        g.setColor(Color.ORANGE);
+        g.fillRect(0, 0, w, h);
     }
 }
 
@@ -107,7 +132,7 @@ class FadeBlock implements MemBlock.Renderer, Runnable {
     MemBlock block;
     Emitter<GameEvent> events;
     float alpha = 0.0f;
-    float fadeStep = 0.05f;
+    float fadeStep = 0.08f;
 
     private FadeBlock(MemBlock block, Emitter<GameEvent> events) {
         this.block = block;
@@ -187,7 +212,7 @@ class MainScript implements Script {
                 block2 = nextBlock();
             FadeBlock.show(block2, events).run();
 
-            Thread.sleep(1200);
+            Thread.sleep(800);
 
             if (!block1.equals(block2)) {
                 // TODO: use executors
@@ -206,5 +231,33 @@ class TypePredicate<T extends GameEvent> implements Predicate<T> {
     @Override
     public boolean test(T e) {
         return e.getType() == type;
+    }
+}
+
+class BlockProps {
+    int blockSize;
+    int blockSpace;
+    int offsetX;
+    int offsetY;
+    public static double bsRatio = 0.10;
+
+    private BlockProps() {  }
+
+    public static BlockProps compute(int rows, int cols, int frameW, int frameH) {
+        double n = Math.min(frameW/cols, frameH/rows);
+
+        BlockProps props = new BlockProps();
+        props.blockSize  = (int) (n * (1-bsRatio));
+        props.blockSpace = (int) (n * bsRatio);
+        props.offsetX = (int) Math.abs(frameW - n*cols + props.blockSpace)/2;
+        props.offsetY = (int) Math.abs(frameH - n*rows + props.blockSpace)/2;
+
+        return props;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Props(x=%d, y=%d, size=%d, space=%d)",
+                offsetX, offsetY, blockSize, blockSpace);
     }
 }
