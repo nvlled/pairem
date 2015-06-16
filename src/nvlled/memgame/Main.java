@@ -26,10 +26,56 @@ public class Main {
         });
 
         final Emitter<GameEvent> events = new Emitter<GameEvent>();
+        Game game = new Game(grid, events);
+        final GameInfoPanel infoPanel = new GameInfoPanel(game);
 
         frame.addMouseListener(new MouseHandler(grid, events));
-        final Script script = new MainScript(grid, events);
+        Dimension winSize = frame.getSize();
+        final Option<Image> dbImage = new Option<>(frame.createImage(
+                    (int) winSize.getWidth(),
+                    (int) winSize.getHeight()));
 
+        frame.addComponentListener(new ComponentAdapter() {
+            public void componentResized(ComponentEvent e) {
+                Dimension winSize = frame.getSize();
+                BlockProps props = BlockProps.compute(
+                    grid.rows,
+                    grid.columns,
+                    (int) winSize.getWidth(),
+                    (int) winSize.getHeight() - infoPanel.getHeight()
+                );
+                props.offsetY += infoPanel.getHeight();
+                grid.setProps(props);
+                dbImage.set(frame.createImage(
+                        (int) winSize.getWidth(),
+                        (int) winSize.getHeight()));
+            }
+        });
+
+        Script script = new MainScript(game);
+        runScript(script);
+
+        NextFrameEvent nextFrame = new NextFrameEvent();
+        while (true) {
+            events.dispatchEvents();
+
+            Graphics2D dbg = (Graphics2D) dbImage.get().getGraphics();
+            Graphics2D g = (Graphics2D) frame.getGraphics();
+
+            winSize = frame.getSize();
+            dbg.clipRect(0, 0, (int) winSize.getWidth(), (int) winSize.getHeight());
+            clearGraphics(dbg);
+
+            grid.paint(dbg);
+            infoPanel.paint(dbg);
+            g.drawImage(dbImage.get(), 0, 0, null);
+
+            Thread.sleep(33);
+            events.emit(nextFrame);
+        }
+    }
+
+    public static void runScript(final Script script) {
         new Thread(new Runnable() {
             public void run() {
                 try {
@@ -39,51 +85,53 @@ public class Main {
                 }
             }
         }).start();
-
-        Dimension winSize = frame.getSize();
-        final Option<Image> dbImage = new Option<>(frame.createImage(
-                    (int) winSize.getWidth(),
-                    (int) winSize.getHeight()));
-
-
-        frame.addComponentListener(new ComponentAdapter() {
-            public void componentResized(ComponentEvent e) {
-                Dimension winSize = frame.getSize();
-                grid.setProps(BlockProps.compute(
-                        grid.rows,
-                        grid.columns,
-                        (int) winSize.getWidth(),
-                        (int) winSize.getHeight()
-                ));
-                dbImage.set(frame.createImage(
-                        (int) winSize.getWidth(),
-                        (int) winSize.getHeight()));
-            }
-        });
-
-
-        NextFrameEvent nextFrame = new NextFrameEvent();
-
-        while (true) {
-            events.dispatchEvents();
-
-            Graphics2D dbg = (Graphics2D) dbImage.get().getGraphics();
-            Graphics2D g = (Graphics2D) frame.getGraphics();
-
-            winSize = frame.getSize();
-            clearGraphics(dbg, (int) winSize.getWidth(), (int) winSize.getHeight());
-
-            grid.paint(dbg);
-            g.drawImage(dbImage.get(), 0, 0, null);
-
-            Thread.sleep(33);
-            events.emit(nextFrame);
-        }
     }
 
-    public static void clearGraphics(Graphics g, int w, int h) {
+    public static void clearGraphics(Graphics g) {
+        Rectangle r = g.getClipBounds();
         g.setColor(Color.ORANGE);
-        g.fillRect(0, 0, w, h);
+        g.fillRect(0, 0, (int) r.getWidth(), (int) r.getHeight());
+    }
+}
+
+class Game {
+    int moves;
+    MemGrid grid;
+    Emitter<GameEvent> events;
+
+    public Game(MemGrid grid, Emitter<GameEvent> events) {
+        this.grid = grid;
+        this.events = events;
+    }
+}
+
+class GameInfoPanel {
+    Game game;
+
+    private static Font font = new Font("Monospaced", Font.PLAIN, 15);
+
+    public GameInfoPanel(Game game) {
+        this.game = game;
+    }
+
+    public void paint(Graphics2D g) {
+        Rectangle grect = g.getClipBounds();
+        g.setColor(new Color(150, 0, 0));
+        g.fillRect(0, 0, (int) grect.getWidth(), getHeight());
+
+        g.setFont(font);
+        g.setColor(Color.WHITE);
+
+        String msg = String.format("Moves: %d", game.moves);
+        java.awt.geom.Rectangle2D frect = font.getStringBounds(msg, g.getFontRenderContext());
+
+        int x = (int) (grect.getWidth() - frect.getWidth())/2;
+        int y = (int) -frect.getY();
+        g.drawString(msg, x, y);
+    }
+
+    public int getHeight() {
+        return 30;
     }
 }
 
@@ -182,16 +230,14 @@ class FadeBlock implements MemBlock.Renderer, Runnable {
 }
 
 class MainScript implements Script {
-    MemGrid grid;
-    Emitter<GameEvent> events;
+    Game game;
 
-    public MainScript(MemGrid grid, Emitter<GameEvent> events) {
-        this.grid = grid;
-        this.events = events;
+    public MainScript(Game game) {
+        this.game = game;
     }
 
     private MemBlock nextBlock() throws InterruptedException {
-        BlockSelectEvent e = (BlockSelectEvent) events.waitEvent(new Predicate<GameEvent>() {
+        BlockSelectEvent e = (BlockSelectEvent) game.events.waitEvent(new Predicate<GameEvent>() {
             public boolean test(GameEvent e) {
                 if (e.getType() == BlockSelectEvent.TYPE) {
                     return !((BlockSelectEvent) e).getBlock().shown;
@@ -203,6 +249,7 @@ class MainScript implements Script {
     }
 
     public void run() throws InterruptedException {
+        Emitter<GameEvent> events = game.events;
         while(true) {
             MemBlock block1 = nextBlock();
             FadeBlock.show(block1, events).run();
@@ -219,6 +266,7 @@ class MainScript implements Script {
                 new Thread(FadeBlock.hide(block1, events)).start();
                 FadeBlock.hide(block2, events).run();
             }
+            game.moves++;
         }
     }
 }
@@ -249,10 +297,16 @@ class BlockProps {
         BlockProps props = new BlockProps();
         props.blockSize  = (int) (n * (1-bsRatio));
         props.blockSpace = (int) (n * bsRatio);
-        props.offsetX = (int) Math.abs(frameW - n*cols + props.blockSpace)/2;
-        props.offsetY = (int) Math.abs(frameH - n*rows + props.blockSpace)/2;
+        props.offsetX = zero(frameW - n*cols + props.blockSpace)/2;
+        props.offsetY = zero(frameH - n*rows + props.blockSpace)/2;
 
         return props;
+    }
+
+    private static int zero(double x) {
+        if (x < 0)
+            return 0;
+        return (int) x;
     }
 
     @Override
