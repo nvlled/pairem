@@ -4,16 +4,15 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class Emitter<T> {
-    private List<T> backEvents;
-    private List<T> frontEvents;
+    private Queue<T> backEvents;
+    private Queue<T> frontEvents;
 
-    private Set<Receiver<T>> anyListeners;
+    private Queue<Receiver<T>> anyListeners;
 
     public Emitter() {
-        frontEvents = new LinkedList<T>();
-        backEvents = new LinkedList<T>();
-        // TODO: use a set from concurrent one instread
-        anyListeners = Collections.synchronizedSet(new HashSet<Receiver<T>>());
+        frontEvents = new LinkedTransferQueue<T>();
+        backEvents = new LinkedTransferQueue<T>();
+        anyListeners = new LinkedTransferQueue<Receiver<T>>();
     }
 
     public void emit(T e) {
@@ -67,7 +66,7 @@ public class Emitter<T> {
     }
 
     public void dispatchEvents() {
-        List<T> events = backEvents;
+        Queue<T> events = backEvents;
         backEvents = frontEvents;
         frontEvents = events;
         backEvents.clear();
