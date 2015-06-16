@@ -3,6 +3,7 @@ package nvlled.memgame;
 import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
+import java.util.*;
 
 import nvlled.emit.*;
 
@@ -52,6 +53,11 @@ public class Main {
             }
         });
 
+        Map<RenderingHints.Key, Object> hints = new HashMap<>();
+        hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        hints.put(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
         Script script = new MainScript(game);
         runScript(script);
 
@@ -61,6 +67,7 @@ public class Main {
 
             Graphics2D dbg = (Graphics2D) dbImage.get().getGraphics();
             Graphics2D g = (Graphics2D) frame.getGraphics();
+            dbg.setRenderingHints(hints);
 
             winSize = frame.getSize();
             dbg.clipRect(0, 0, (int) winSize.getWidth(), (int) winSize.getHeight());
@@ -108,7 +115,7 @@ class Game {
 class GameInfoPanel {
     Game game;
 
-    private static Font font = new Font("Monospaced", Font.PLAIN, 15);
+    private static Font font = new Font("Monospaced", Font.PLAIN, 17);
 
     public GameInfoPanel(Game game) {
         this.game = game;
@@ -252,11 +259,13 @@ class MainScript implements Script {
         Emitter<GameEvent> events = game.events;
         while(true) {
             MemBlock block1 = nextBlock();
+            block1.setSolving(true);
             FadeBlock.show(block1, events).run();
 
             MemBlock block2 = block1;
             while (block1 == block2)
                 block2 = nextBlock();
+            block2.setSolving(true);
             FadeBlock.show(block2, events).run();
 
             Thread.sleep(800);
@@ -266,6 +275,8 @@ class MainScript implements Script {
                 new Thread(FadeBlock.hide(block1, events)).start();
                 FadeBlock.hide(block2, events).run();
             }
+            block1.setSolving(false);
+            block2.setSolving(false);
             game.moves++;
         }
     }

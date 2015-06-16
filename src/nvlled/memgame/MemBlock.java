@@ -8,6 +8,11 @@ import java.io.*;
 public abstract class MemBlock {
     Renderer renderer;
     boolean shown;
+    boolean solving = false;
+
+    private static final Color BORDER_COLOR = new Color(40, 40, 40);
+    private static final Color SOLVING_BORDER_COLOR = new Color(200, 180, 200);
+    private static final int BORDER_SIZE = 8;
 
     public abstract void paintBlock(Graphics2D g);
 
@@ -24,6 +29,19 @@ public abstract class MemBlock {
     }
 
     public void paint(Graphics2D g) {
+        Rectangle rect = g.getClipBounds();
+        int w = (int) rect.getWidth();
+        int h = (int) rect.getHeight();
+        int size = BORDER_SIZE;
+
+        Color borderColor = BORDER_COLOR;
+        if (solving)
+            borderColor = SOLVING_BORDER_COLOR;
+        g.setColor(borderColor);
+
+        g.fillRoundRect(0, 0, w, h, 20, 20);
+        g.clipRect(size, size, w-size, h-size);
+
         Renderer r = renderer;
         if (r != null) {
             if (renderer.isOverlay()) {
@@ -42,6 +60,7 @@ public abstract class MemBlock {
         }
     }
 
+    public void setSolving(boolean t) { solving = t; }
     public void show() { shown = true; }
     public void hide() { shown = false; }
 
