@@ -20,6 +20,7 @@ public class Main {
 
         final JFrame frame = new JFrame();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setTitle("Pairem");
         SwingUtilities.invokeAndWait(new Runnable() {
             public void run() {
                 frame.setSize(500, 700);
