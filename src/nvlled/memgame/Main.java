@@ -19,6 +19,7 @@ public class Main {
         );
 
         final JFrame frame = new JFrame();
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         SwingUtilities.invokeAndWait(new Runnable() {
             public void run() {
                 frame.setSize(500, 700);
@@ -223,6 +224,8 @@ class FadeBlock implements MemBlock.Renderer, Runnable {
 
         while (alpha >= 0f && alpha <= 1f) {
             alpha += fadeStep;
+            if (alpha <= 0 && fadeStep < 0)
+                break;
             frames.next();
         }
         frames.close();
